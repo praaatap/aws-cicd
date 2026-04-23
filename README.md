@@ -1,178 +1,160 @@
-    # Node DevOps App (ECS + CI/CD)
+    # AWS CI/CD Node Service
 
-A Node.js application deployed on AWS using Docker, Amazon ECS (Fargate), and automated CI/CD with GitHub Actions.
+    Production-style Node.js service deployed to Amazon ECS Fargate with container images stored in Amazon ECR and automated delivery through GitHub Actions.
 
----
+    ## Architecture Images
+    ![Img loading](assets/image.png)
 
-## Architecture Overview
+    ## What This Project Does
 
-```
-Code → Docker → Amazon ECR → Amazon ECS → Running Container
-                 ↑
-           GitHub Actions (CI/CD)
-```
+    - Runs an Express service on port 3000.
+    - Builds a Docker image for every release tag.
+    - Pushes the image to Amazon ECR.
+    - Renders a new ECS task definition with the new image.
+    - Deploys the updated task to an ECS service.
 
----
+    ## Architecture
 
-## Tech Stack
+    ~~~text
+    Tag Push (v*)
+        -> GitHub Actions
+        -> Docker Build
+        -> Amazon ECR
+        -> ECS Task Definition Render
+        -> Amazon ECS Service Update (Fargate)
+    ~~~
 
-* Node.js (Express)
-* Docker
-* Amazon ECS (Fargate)
-* Amazon ECR
-* GitHub Actions
+    ## Tech Stack
 
----
+    - Node.js 18
+    - Express
+    - Docker
+    - Amazon ECR
+    - Amazon ECS Fargate
+    - GitHub Actions
 
-## Project Structure
+    ## Repository Structure
 
-```
-.
-├── Dockerfile
-├── index.js
-├── package.json
-├── task-definition.json
-└── .github/workflows/deploy.yml
-```
+    ~~~text
+    .
+    |- .github/workflows/deploy.yml
+    |- Dockerfile
+    |- index.js
+    |- package.json
+    |- package-lock.json
+    |- task-definition.json
+    |- buildspec.yml
+    |- appspec.yml
+    |- scripts/start.sh
+    |- test.js
+    `- README.md
+    ~~~
 
----
+    ## Application Endpoints
 
-## Run Locally (Docker)
+    - GET / -> hello response
+    - GET /health -> health check
+    - GET /live -> liveness check
+    - GET /ready -> readiness check
 
-### Build image
+    Default local URL: http://localhost:3000
 
-```
-docker build -t node-devops-app .
-```
+    ## Run Locally
 
-### Run container
+    ### Option 1: Node.js
 
-```
-docker run -p 3000:3000 node-devops-app
-```
+    ~~~bash
+    npm install
+    npm start
+    ~~~
 
-Open in browser:
+    ### Option 2: Docker
 
-```
-http://localhost:3000
-```
+    ~~~bash
+    docker build -t aws-cicd-node-app .
+    docker run --rm -p 3000:3000 aws-cicd-node-app
+    ~~~
 
----
+    ## CI/CD Workflow
 
-## AWS Deployment
+    Workflow file: .github/workflows/deploy.yml
 
-This application is deployed using:
+    Deployment trigger:
 
-* Amazon ECR to store Docker images
-* Amazon ECS (Fargate) to run containers
+    - Push a tag that starts with v
 
----
+    Example release:
 
-## CI/CD Pipeline
+    ~~~bash
+    git tag v1.0.0
+    git push origin v1.0.0
+    ~~~
 
-The deployment pipeline is implemented using GitHub Actions.
+    Pipeline steps:
 
-### Flow
+    1. Checkout repository code.
+    2. Configure AWS credentials.
+    3. Login to ECR.
+    4. Build and push Docker image tagged with commit SHA.
+    5. Inject image URI into task definition.
+    6. Deploy updated task definition to ECS service.
 
-```
-git push → build Docker image → push to ECR → update ECS → deploy
-```
+    ## Required GitHub Secrets
 
-### Workflow file
+    Configure these repository secrets:
 
-```
-.github/workflows/deploy.yml
-```
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - AWS_REGION
+    - ECR_REPOSITORY
+    - ECS_CLUSTER
+    - ECS_SERVICE
 
----
+    ## ECS Task Definition Notes
 
-## Required GitHub Secrets
+    - Family: awsdevopsnodejs
+    - Container name: node-app
+    - Launch type: FARGATE
+    - Port mapping: 3000/tcp
+    - Image is replaced at deploy time from IMAGE_URI placeholder
 
-Add the following secrets in your repository settings:
+    Keep the container name as node-app in both task definition and workflow.
 
-```
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_REGION=ap-south-1
-ECR_REPOSITORY=nodejsecs
-ECS_CLUSTER=node-devops-cluster
-ECS_SERVICE=awsdevopsnodejs-service-1d5vd4nh
-```
+    ## Additional Deployment Files
 
----
+    This repository also includes:
 
-## Deployment Process
+    - buildspec.yml
+    - appspec.yml
+    - scripts/start.sh
 
-1. Code is pushed to the `main` branch
-2. GitHub Actions builds a Docker image
-3. The image is pushed to Amazon ECR
-4. Task definition is updated dynamically with the new image
-5. ECS service deploys the updated task
+    These files are commonly used in AWS CodeBuild or CodeDeploy style pipelines. Your active automated deployment to ECS is currently handled by GitHub Actions.
 
----
+    ## Rollback Strategy
 
-## Health Check Endpoint
+    1. Open ECS in AWS Console.
+    2. Open Task Definitions and choose an older revision.
+    3. Update the ECS service to use that revision.
+    4. Wait for service stability.
 
-```
-GET /health
-```
+    ## Troubleshooting
 
-Used by ECS to verify container health.
+    - Pipeline did not start:
+        - Check that you pushed a tag matching v pattern.
+    - ECS deployment fails:
+        - Validate ECS cluster and service secret values.
+        - Confirm IAM user has ECR and ECS permissions.
+    - Health check fails in ECS:
+        - task-definition.json uses curl for health checks.
+        - Ensure curl exists in the container image, or change health command.
 
----
+    ## Quick Improvement Ideas
 
-## Updating the Application
+    - Add a real test command in package.json and implement tests in test.js.
+    - Add an Application Load Balancer target group health check.
+    - Add CloudWatch alarms and ECS auto scaling policies.
+    - Add image scanning and dependency scanning in CI.
 
-### Step 1: Make changes
+    ## License
 
-Modify application files such as:
-
-* `index.js`
-* or any relevant source file
-
-### Step 2: Commit and push
-
-```
-git add .
-git commit -m "update application"
-git push origin main
-```
-
-### Step 3: Automatic deployment
-
-* GitHub Actions pipeline runs
-* ECS service updates automatically
-
----
-
-## Rollback
-
-To roll back to a previous version:
-
-1. Go to the ECS Console
-2. Open Task Definitions
-3. Select a previous revision
-4. Deploy that revision
-
----
-
-## Important Notes
-
-* Do not rely on the `latest` image tag
-* The task definition uses dynamic `IMAGE_URI`
-* Container name must remain: `node-app`
-
----
-
-## Future Improvements
-
-* Add Application Load Balancer
-* Enable auto scaling
-* Add monitoring with CloudWatch
-* Implement blue/green deployments
-
----
-
-## Author
-
-DevOps learning project using AWS ECS and CI/CD
+    ISC
