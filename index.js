@@ -5,14 +5,9 @@ app.get("/", (req, res) => {
   res.send("Hello DevOps 🚀");
 });
 
-app.get('/health',(req,res)=> {
-  try {
-    res.send
-  } catch (error) {
-    
-  }
-})
-
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");
