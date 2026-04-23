@@ -9,6 +9,14 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+app.get('/live', (req, res) => {
+  res.status(200).json({ status: "live" });
+}
+
+app.get('/ready', (req, res) => {
+  res.status(200).json({ status: "ready" });
+});
+
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
