@@ -3,7 +3,9 @@
     Production-style Node.js service deployed to Amazon ECS Fargate with container images stored in Amazon ECR and automated delivery through GitHub Actions.
 
     ## Architecture Images
-    ![Img loading](assets/image.png)
+    ![Img loading](assets/architecture.png)
+    ## Data Flow Diagram
+    ![Img loading](assets/dataflow.png)
 
     ## What This Project Does
 
