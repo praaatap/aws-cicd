@@ -11,7 +11,7 @@ app.get('/health', (req, res) => {
 
 app.get('/live', (req, res) => {
   res.status(200).json({ status: "live" });
-}
+} );
 
 app.get('/ready', (req, res) => {
   res.status(200).json({ status: "ready" });
